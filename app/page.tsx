@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
+import { useFetch } from "./hooks/useFetch";
 import Card from "./components/Card"
 
 type Todo = {
@@ -14,61 +15,53 @@ export default function Home() {
   const [newTodo, setNewTodo] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [ fetch ] = useFetch()
 
-  const createTodo = useCallback(async (event: React.FormEvent) =>{
-    console.log('createTodo triggered')
+  const fetchTodos = async () => {
+    const response = await fetch('/api/todos')
+    if(!response.status) {
+      setError(response.message)
+      return
+    }
+    const loadedTodos = []
+    const todoItems = response.data
+    for(const key in todoItems){
+      loadedTodos.push({
+        id: key,
+        item: todoItems[key].item,
+        isDone: todoItems[key].isDone
+      })
+    }
+    setTodos(loadedTodos)
+    setIsLoading(false)
+  }
+
+  const createTodo = async (event: React.FormEvent) => {
     event.preventDefault()
     if(newTodo.trim().length === 0) return
-
-    await fetch('https://todo-ton-default-rtdb.firebaseio.com/todos.json', {
-      method: 'POST',
-      body: JSON.stringify({ item: newTodo, isDone: false })
-    });
-    
+    const body = { item: newTodo, isDone: false }
+    const response = await fetch('/api/todos', 'POST', body)
     setNewTodo('')
-  }, [newTodo])
-
-  useEffect(() => {
-    console.log('useEffect triggered')
-    const fetchTodos = async () => {
-      const response = await fetch('https://todo-ton-default-rtdb.firebaseio.com/todos.json')
-      if(!response.ok) {
-        throw new Error('Something went wrong!')
-      }
-      const responseData = await response.json()
-
-      const loadedTodos = []
-      
-      for(const key in responseData){
-        loadedTodos.push({
-          id: key,
-          item: responseData[key].item,
-          isDone: responseData[key].isDone
-        })
-      }
-      setTodos(loadedTodos)
-      setIsLoading(false)
+    if(!response.status) {
+      setError(response.message)
+      return
     }
-
-    fetchTodos().catch(err => {
-      setIsLoading(false)
-      setError(err.message)
-    })
-  },[createTodo])
-
-
-  const makeTodoComplete = (id: string) => {
-    setTodos(prevTodos => {
-      return prevTodos.map(todo => {
-        if (todo.id === id) {
-          return { ...todo, isDone: true };
-        }
-        return todo;
-      });
-    });
+    fetchTodos();
   };
 
-  console.log(todos)
+const makeTodoComplete = async (id: string, complete: boolean) => {
+  const body = { isDone: complete }
+  const response = await fetch(`/api/todos/${id}`, 'PATCH', body)
+  if(!response.status) {
+    setError(response.message)
+    return
+  }
+  fetchTodos() 
+};
+
+useEffect(() => {
+  fetchTodos()
+},[])
 
   const displayTodos = todos.map(
     todo => <Card 
@@ -81,6 +74,7 @@ export default function Home() {
   )
 
   const loadingStatement = isLoading && <section className="text-center"><p>Loading...</p></section>
+  const emptyTodo = !isLoading && todos.length < 1 && <section className="text-center"><p>No todos to display.</p></section>
 
   if(error) {
     return <section><p>{error}</p></section>
@@ -106,6 +100,7 @@ export default function Home() {
         <div className='mt-24 w-80 md:w-96 overflow-y-auto'>
           {displayTodos}
           {loadingStatement}
+          {emptyTodo}
         </div>
       </main>
     </>

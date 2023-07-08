@@ -7,7 +7,7 @@ type PropsType = {
 
 const Card = ({children, complete, onClick, id}: PropsType) => {
 return (
-  <div onClick={() => onClick(id)} className={`${complete ? 'bg-secondary text-secondary-content' : 'bg-neutral text-neutral-content'} card my-2 bg-neutral`}>
+  <div onClick={() => onClick(id, !complete)} className={`${complete ? 'bg-secondary text-secondary-content' : 'bg-neutral text-neutral-content'} card my-2 bg-neutral`}>
     <div className="card-body items-center text-center">
       <p>{children}</p>
     </div>
